@@ -6,20 +6,16 @@
 
 QT       += network
 
-VERSION = 1.0.3
-
+#VERSION = 1.0.3
+CONFIG += plugin
 TARGET = qlc
 TEMPLATE = lib
 
 DESTDIR = ../Bin
-if QT_VERSION < 0x040000{
-    CONFIG += staticlib
-}
 
 DEFINES += QLC_LIBRARY
 
 SOURCES += qlc.cpp
 
-HEADERS += qlc.h\
-        qlc_global.h
+HEADERS += qlc.h
 

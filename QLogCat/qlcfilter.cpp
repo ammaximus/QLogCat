@@ -4,7 +4,8 @@ bool QLCLine::qt3  = false;
 
 QString QLCLine::getFullMessage()
 {
-				// TODO use different text codec - old linux qt3.3 koi8-r, new linux qt4.x, windows 1251 qt4.x 
+    // Для МСВС есть два варианта - кои и утф, оба в асции, добавить возможность настройки
+    // Для виндовс утф - утф и вин1251 - неизвестно
     QTextCodec* codec;
     if (qt3)
         codec = QTextCodec::codecForName("koi8-r");

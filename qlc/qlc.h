@@ -1,7 +1,20 @@
-﻿#ifndef QLC_H
+#ifndef QLC_H
 #define QLC_H
 
-#include "qlc_global.h"
+#include "qglobal.h"
+#if QT_VERSION >= 0x040000
+    #define QT4
+
+    #if defined(QLC_LIBRARY)
+        #define QLCSHARED_EXPORT Q_DECL_EXPORT
+    #else
+        #  define QLCSHARED_EXPORT Q_DECL_IMPORT
+    #endif
+#else
+    #define QT3
+    #define QLCSHARED_EXPORT
+    #define QVector QValueVector
+#endif
 
 #ifdef QT4
     #include <QHostAddress>
@@ -19,14 +32,13 @@
     #include <qvariant.h>
 #endif
 
-#define QLC_DEFPORT 13093   // Default port
-#define QLC_DEFTAG "System" // Default log
+#define QLC_DEFPORT 13093   // Порт по умолчанию
+#define QLC_DEFTAG "System" // Журнал по умолчанию
+#define QLC_QT 1            // Стандартный тип Qt - QVariant
+#define QLC_CAT 2           // Тип QLCattable
+#define QLC_COMPLEX 3       // Смесь из двух
 
-#define QLC_QT 1            // QVariant based message
-#define QLC_CAT 2           // QLCattable based message
-#define QLC_COMPLEX 3       // Comlex message
-
-// Macrocontur
+// Макроконтур
 #define qlc MacroCall(__FILE__, __LINE__)
 #define qlcv MacroCall(__FILE__, __LINE__, 0)
 #define qlcd MacroCall(__FILE__, __LINE__, 1)
@@ -35,39 +47,41 @@
 #define qlce MacroCall(__FILE__, __LINE__, 4)
 #define qlca MacroCall(__FILE__, __LINE__, 5)
 #define qlcf MacroCall(__FILE__, __LINE__, 6)
+#define qlcm MacroCall(__FILE__, __LINE__, 7)
 
 /// /////
-/// Interface allow log own object
+/// Интерфейс, позволяющий выводить в отладчик целые объекты
 /// /////
 
 class QLCSHARED_EXPORT QLCattable
 {
 public:
-    virtual QString printDebug()const =0;    // Short info message
-    virtual QStringList dump()const =0;      // Object dump
+    virtual QString printDebug()const =0;    // Вывести отладочное сообщение с краткой информацией
+    virtual QStringList dump()const =0;      // Дамп содержимого объекта
 };
 
 /// ///////////
-/// Main logger class
+/// Класс отправки отладочных сообщений для QLogCat
 /// ///////////
 class QLCSHARED_EXPORT QLC
 {
 public:
     // Уровень сообщения
     enum LevelType{
-        Verbose=0,  
-        Debug=1,    
-        Info=2,     
-        Warning=3,  
-        Error=4,    
-        Assert=5,   
-        Fatal=6     
+        Verbose=0,  // Временное отладочное сообщение (не должно быть фиксировано)
+        Debug=1,    // Отладка
+        Info=2,     // Информирующее сообщение
+        Warning=3,  // Предупреждение
+        Error=4,    // Ошибка
+        Assert=5,   // Утверждение
+        Fatal=6,    // Фатальная ошибка
+        Monitor=7   // Монитор
     };
-
+    // Направление потока
     enum FlowType{
-        Off,    
-        Net,    
-        Console 
+        Off,    // Выключена
+        Net,    // По сети
+        Console // В консоль
     };
 
     static int port;
@@ -85,9 +99,11 @@ public:
     static void setQLogCatAddress(int address, int port);
 #endif
 
-    QLC(QString file, int line, LevelType type, QString log = QLC_DEFTAG);  // Object constructor
-    ~QLC(); // Destructor, which send information after <<
+    QLC(QString file, int line, LevelType type, QString log = QLC_DEFTAG);  // Создание объекта
+    ~QLC(); // То самое место, которое отправляет по завершению цепочки <<
 
+    // Функции выдачи сообщений разного уровня
+    // Функции оператора <<
     QLC& operator<<(const QVariant var);
     QLC& operator<<(const QLCattable *cat);
 

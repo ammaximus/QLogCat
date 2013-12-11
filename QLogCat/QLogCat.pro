@@ -17,7 +17,7 @@ INCLUDEPATH = ../qlc/
 
 DESTDIR = ../Bin
 LIBS += -L../Bin/ \
-        -lqlc1
+        -lqlc
 
 SOURCES += main.cpp\
         qlogcat.cpp \

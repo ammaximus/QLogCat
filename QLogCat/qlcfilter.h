@@ -19,9 +19,9 @@ public:
 };
 
 class QLCFilter{
-public:
-    // TODO - compact bools, cose not any reasons found
-    bool verbose;
+public: //! Так и не получилось обосновать целесообразность показа кусков,
+    //! нужно отрефакториться в один признак
+    bool verbose; // Признаки отображения сообщений по типам
     bool debug;
     bool info;
     bool warning;
@@ -29,9 +29,9 @@ public:
     bool assert;
     bool fatal;
 
-    QString name;         // Filter name
-    QString textContains; // Filter by contained text
-    QString logTag;       // Filter by log accessory
+    QString name;         // Название фильтра
+    QString textContains; // Содержит текст
+    QString logTag;       // Принадлежит журналу
 
     QLCFilter();
     bool filtrate(QLCLine &line);

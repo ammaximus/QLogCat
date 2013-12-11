@@ -11,7 +11,7 @@ QLogCat::QLogCat(QWidget *parent) :
     socket->bind(13093);
     connect(socket,SIGNAL(readyRead()), SLOT(readDatagramms()));
 
-    // Table formating
+    // Форматирование таблицы
     ui->tblLog->setRowCount(0);
     ui->tblLog->setColumnCount(6);
     ui->tblLog->horizontalHeader()->resizeSection(0,20);
@@ -25,9 +25,11 @@ QLogCat::QLogCat(QWidget *parent) :
     ui->tblLog->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tblLog->setSelectionBehavior(QAbstractItemView::SelectRows);
 
+    ui->tblMonitor->verticalHeader()->setShown(false);
+
     QLCFilter *f = new QLCFilter();
     f->name="none";
-    filters.append(f); // Add empty filter
+    filters.append(f); // Добавляем пустой фильтр для возможности отключения
     ui->listFilter->addItem(filters.last()->name);
 
     QTextCodec::setCodecForTr(QTextCodec::codecForName("utf-8"));
@@ -51,7 +53,7 @@ void QLogCat::readDatagramms()
 void QLogCat::processMessage(QByteArray msg)
 {
     QDataStream str(&msg,QIODevice::ReadOnly);
-    if (QLCLine::qt3) // Red hat / ASP Linux (Qt 3.3)
+    if (QLCLine::qt3) // Получение из МСВС и ASP Linux (Qt 3.3)
         str.setVersion(6);
     int messageType;
     str >> messageType;
@@ -72,6 +74,7 @@ void QLogCat::processMessage(QByteArray msg)
     case QLC_COMPLEX:
         str >> line.messageVector >> line.cats;
         addLine(line);
+        lines.append(line);
         break;
     default:
         Q_ASSERT_X(true, "LOGCAT", "Unexpected message type");
@@ -83,9 +86,26 @@ void QLogCat::processMessage(QByteArray msg)
 void QLogCat::addLine(QLCLine line)
 {
     if (filtrateAll(line)){
+        if (line.level==QLC::Monitor)
+        {
+            int elem = ui->tblMonitor->rowCount();
+            bool found = false;
+            for (int i=0; i<ui->tblMonitor->rowCount(); i++){
+                if (ui->tblMonitor->item(i,0)->text() == line.log){
+                    elem = i;
+                    found = true;
+                }
+            }
+            if (!found)
+                ui->tblMonitor->insertRow(elem);
+
+            ui->tblMonitor->setItem(elem,0,new QTableWidgetItem(line.log));
+            ui->tblMonitor->setItem(elem,1,new QTableWidgetItem(line.getFullMessage()));
+            return;
+        }
+
         int elem = ui->tblLog->rowCount();
         ui->tblLog->insertRow(elem);
-
         QString letterType;
         switch(line.level){
         case QLC::Warning:
@@ -109,6 +129,9 @@ void QLogCat::addLine(QLCLine line)
         case QLC::Fatal:
             letterType = "FE";
             break;
+        case QLC::Monitor: // Это событие происходить не должно
+            letterType = "M";
+            break;
         }
 
         ui->tblLog->setItem(elem,0,new QTableWidgetItem(letterType));
@@ -118,9 +141,8 @@ void QLogCat::addLine(QLCLine line)
         ui->tblLog->setItem(elem,4,new QTableWidgetItem(QString::number(line.lineNumber)));
         ui->tblLog->setItem(elem,5,new QTableWidgetItem(line.getFullMessage()));
 
-        // TODO Autoscroll
-        //ui->tblLog->verticalScrollBar()->setSliderPosition(ui->tblLog->verticalScrollBar()->maximum());
-        // Почемуто отстает на 4
+        // Автопрокрутка
+        ui->tblLog->scrollToBottom();
     }
 }
 
@@ -145,7 +167,7 @@ void QLogCat::on_pbTest_clicked()
 {
     qlc("Logname") << "Hello";
     qlcd("Hello") << "Message!";
-    qlce("DasCool") << "Check int";
+    qlcm("DasCool") << "Check int:" << qrand();
 }
 
 void QLogCat::on_pbSettings_clicked()
@@ -178,7 +200,7 @@ void QLogCat::on_tblLog_currentCellChanged(int currentRow, int currentColumn, in
         ui->txtMessage->setText("");
         return;
     }
-    ui->txtMessage->setText(ui->tblLog->item(currentRow,4)->text());
+    ui->txtMessage->setText(ui->tblLog->item(currentRow,5)->text());
 }
 
 void QLogCat::on_listFilter_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)

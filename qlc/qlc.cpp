@@ -3,7 +3,7 @@
 
 void QLC::configure()
 {
-    if (firstLaunch)    // Initialization, 
+    if (firstLaunch)    // Инициализация, разбор переменных окружения
     {
     QString type = QString(getenv("QLC"));
     if (type==""){
@@ -39,11 +39,11 @@ QLC::~QLC()
     sendMessage(_messages, _cats, _type, _log, QTime::currentTime(), _file, _line);
 }
 
-// Static vars
-QLC::FlowType QLC::workFlow = QLC::Off;  // Out flow direction
-bool QLC::firstLaunch = true;        // First launch flag
+// Статические переменные
+QLC::FlowType QLC::workFlow = QLC::Off;  // Направление потока вывода
+bool QLC::firstLaunch = true;        // Определяет необходимость инициализации
 
-// Default address - Local host
+// Адрес по умолчанию - локальная машина
 int QLC::port = QLC_DEFPORT;
 #ifdef QT4
 QHostAddress QLC::qlcAddress = QHostAddress::LocalHost;
@@ -56,17 +56,17 @@ void QLC::setQLogCatAddress(QHostAddress address, int port)
 #endif
 
 #ifdef QT3
-int qlc::qlcAddress = 0x7F000001;
+int QLC::qlcAddress = 0x7F000001;
 
-void qlc::setQLogCatAddress(int address, int port)
+void QLC::setQLogCatAddress(int address, int port)
 {
-    qlc::port = port;
-    qlc::qlcAddress = address;
+    QLC::port = port;
+    QLC::qlcAddress = address;
 }
 #endif
 
 ///////////////////////
-// Send message
+// Отправка сообщения
 ///////////////////////
 
 void QLC::sendMessage(QVector<QVariant> messageVector, QMap<QString, QStringList> cats, LevelType level, QString log, QTime time, QString file, int line)
@@ -96,8 +96,7 @@ void QLC::sendMessage(QVector<QVariant> messageVector, QMap<QString, QStringList
             std::cout << messageVector[i].toString().toLocal8Bit().constData();
         #endif
         #ifdef QT3
-            std::cout << messageVector[i].toString().ascii(); // It's for Red Hat Qt3
-            // TODO - codec choice
+            std::cout << messageVector[i].toString().ascii(); // Дибильная МСВС кодировка
         #endif
         }
         std::cout << std::endl;
@@ -119,7 +118,7 @@ void QLC::writeDatagramm(QByteArray &msg)
 
 
 ///////////
-// Operator <<
+// Функции оператора <<
 ///////////
 
 
