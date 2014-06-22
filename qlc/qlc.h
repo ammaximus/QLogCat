@@ -1,53 +1,58 @@
 #ifndef QLC_H
 #define QLC_H
 
-#include "qglobal.h"
-#if QT_VERSION >= 0x040000
-    #define QT4
-
-    #if defined(QLC_LIBRARY)
-        #define QLCSHARED_EXPORT Q_DECL_EXPORT
-    #else
-        #  define QLCSHARED_EXPORT Q_DECL_IMPORT
-    #endif
+#if defined(QLC_LIBRARY)
+#define QLCSHARED_EXPORT Q_DECL_EXPORT
 #else
-    #define QT3
-    #define QLCSHARED_EXPORT
-    #define QVector QValueVector
+#  define QLCSHARED_EXPORT Q_DECL_IMPORT
 #endif
 
-#ifdef QT4
-    #include <QHostAddress>
-    #include <QUdpSocket>
-    #include <QTime>
-    #include <QStringList>
-    #include <iostream>
-#endif
-
-#ifdef QT3
-    #include <qsocketdevice.h>
-    #include <qdatetime.h>
-    #include <qstringlist.h>
-    #include <qvaluevector.h>
-    #include <qvariant.h>
-#endif
-
+#include <QHostAddress>
+#include <QUdpSocket>
+#include <QTime>
+#include <QStringList>
+#include <iostream>
+#include <QVariant>
+#include <QProcess>
+#include <QLocalSocket>
+#include <QApplication>
+/*TODO Идея следующая:
+  В статической области завести хешмэп Localsockets.
+  Ключом доступа будет являться ид потока, если не найдено будет создаваться новый.
+  Таким образом, мы получаем ограниченное число потоков.
+  Предыдущее наверное не поможет. В функции записи мы каждый раз создавали новый удп сокет.
+  Здесь же унас один сокет и это может вызвать проблемы при многопоточном обращении.
+  Скореевсего придется каждый раз создавать новый сокет на каждую транзакцию.
+  Идея с потоками немного не выйдет, т.к. я пока не могу придумать как их удалаять
+  Стоп. Статический класс энвайромент может мне помочь. Напишем объект статического
+  класса который оказывает служебные действия! Стоит попробовыать еще успею зарядка есть.
+*/
 #define QLC_DEFPORT 13093   // Порт по умолчанию
 #define QLC_DEFTAG "System" // Журнал по умолчанию
 #define QLC_QT 1            // Стандартный тип Qt - QVariant
 #define QLC_CAT 2           // Тип QLCattable
 #define QLC_COMPLEX 3       // Смесь из двух
 
+// Уровни сообщений
+#define LEVEL_VERBOSE 0
+#define LEVEL_DEBUG   1
+#define LEVEL_INFO    2
+#define LEVEL_WARNING 3
+#define LEVEL_ERROR   4
+#define LEVEL_ASSERT  5
+#define LEVEL_FATAL   6
+#define LEVEL_MONITOR 7
+
 // Макроконтур
 #define qlc MacroCall(__FILE__, __LINE__)
-#define qlcv MacroCall(__FILE__, __LINE__, 0)
-#define qlcd MacroCall(__FILE__, __LINE__, 1)
-#define qlci MacroCall(__FILE__, __LINE__, 2)
-#define qlcw MacroCall(__FILE__, __LINE__, 3)
-#define qlce MacroCall(__FILE__, __LINE__, 4)
-#define qlca MacroCall(__FILE__, __LINE__, 5)
-#define qlcf MacroCall(__FILE__, __LINE__, 6)
-#define qlcm MacroCall(__FILE__, __LINE__, 7)
+#define qlcv MacroCall(__FILE__, __LINE__, LEVEL_VERBOSE)
+#define qlcd MacroCall(__FILE__, __LINE__, LEVEL_DEBUG)
+#define qlci MacroCall(__FILE__, __LINE__, LEVEL_INFO)
+#define qlcw MacroCall(__FILE__, __LINE__, LEVEL_WARNING)
+#define qlce MacroCall(__FILE__, __LINE__, LEVEL_ERROR)
+#define qlca MacroCall(__FILE__, __LINE__, LEVEL_ASSERT)
+#define qlcf MacroCall(__FILE__, __LINE__, LEVEL_FATAL)
+#define qlcm MacroCall(__FILE__, __LINE__, LEVEL_MONITOR)
 
 /// /////
 /// Интерфейс, позволяющий выводить в отладчик целые объекты
@@ -56,8 +61,19 @@
 class QLCSHARED_EXPORT QLCattable
 {
 public:
-    virtual QString printDebug()const =0;    // Вывести отладочное сообщение с краткой информацией
+    virtual QString toString()const =0;    // Вывести отладочное сообщение с краткой информацией
     virtual QStringList dump()const =0;      // Дамп содержимого объекта
+};
+
+class QLCSHARED_EXPORT QLCEnv{
+public:
+    QLCEnv();
+    ~QLCEnv();
+    QLocalSocket *ls;
+    void setLS(QLocalSocket *ls){
+        Q_ASSERT(ls!=0);
+        this->ls=ls;
+    }
 };
 
 /// ///////////
@@ -68,36 +84,33 @@ class QLCSHARED_EXPORT QLC
 public:
     // Уровень сообщения
     enum LevelType{
-        Verbose=0,  // Временное отладочное сообщение (не должно быть фиксировано)
-        Debug=1,    // Отладка
-        Info=2,     // Информирующее сообщение
-        Warning=3,  // Предупреждение
-        Error=4,    // Ошибка
-        Assert=5,   // Утверждение
-        Fatal=6,    // Фатальная ошибка
-        Monitor=7   // Монитор
+        Verbose=LEVEL_VERBOSE,  // Временное отладочное сообщение (не должно быть фиксировано)
+        Debug=LEVEL_DEBUG,      // Отладка
+        Info=LEVEL_INFO,        // Информирующее сообщение
+        Warning=LEVEL_WARNING,  // Предупреждение
+        Error=LEVEL_ERROR,      // Ошибка
+        Assert=LEVEL_ASSERT,    // Утверждение
+        Fatal=LEVEL_FATAL,      // Фатальная ошибка
+        Monitor=LEVEL_MONITOR   // Монитор
     };
     // Направление потока
     enum FlowType{
         Off,    // Выключена
         Net,    // По сети
-        Console // В консоль
+        Console, // В консоль
+        LogCat  // Напрямую в QLogCat
     };
 
     static int port;
     static bool firstLaunch;
     static FlowType workFlow;
+    static QLocalSocket *logCatSock;
+    static QLCEnv enviroment;
 
     static void configure();
 
-#ifdef QT4
     static QHostAddress qlcAddress;
     static void setQLogCatAddress(QHostAddress address, int port=QLC_DEFPORT);
-#endif
-#ifdef QT3
-    static int qlcAddress;
-    static void setQLogCatAddress(int address, int port);
-#endif
 
     QLC(QString file, int line, LevelType type, QString log = QLC_DEFTAG);  // Создание объекта
     ~QLC(); // То самое место, которое отправляет по завершению цепочки <<

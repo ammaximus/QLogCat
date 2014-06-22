@@ -9,9 +9,12 @@
 #include <QNetworkInterface>
 #include <QListWidgetItem>
 #include <QScrollBar>
+#include <QThread>
+#include <QLocalServer>
 
 #include "addfilterdialog.h"
 #include "qlcfilter.h"
+#include "localsocketreader.h"
 
 namespace Ui {
 class QLogCat;
@@ -20,14 +23,13 @@ class QLogCat;
 class QLogCat : public QWidget
 {
     Q_OBJECT
-    
 public:
     explicit QLogCat(QWidget *parent = 0);
     ~QLogCat();
     
 public slots:
     void readDatagramms();
-private slots:
+ private slots:
     void on_pbTest_clicked();
     void on_pbSettings_clicked();
     void on_cbSearchLevel_currentIndexChanged(int index);
@@ -37,15 +39,17 @@ private slots:
     void on_listFilter_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
     void on_pbClear_clicked();
     void on_cbQt3_stateChanged(int arg1);
+    void onNewLocalConnection();
+    void processMessage(QByteArray msg);
 
 private:
     Ui::QLogCat *ui;
     QUdpSocket *socket;
+    QLocalServer *server;
     QList<QLCLine> lines;
     QList<QLCFilter*> filters;
     QTextCodec *codec;
 
-    void processMessage(QByteArray msg);
     void appendMessage(QVariant var, QLC::LevelType type, QString log, QTime time);
     void appendMessage(QString msg, QStringList list, QLC::LevelType type, QString log, QTime time);
     void appendMessage(QVector<QVariant> messages, QMap<QString,QStringList> cats, QLC::LevelType type, QString log, QTime time);

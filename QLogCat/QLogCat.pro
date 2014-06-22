@@ -22,11 +22,13 @@ LIBS += -L../Bin/ \
 SOURCES += main.cpp\
         qlogcat.cpp \
     addfilterdialog.cpp \
-    qlcfilter.cpp
+    qlcfilter.cpp \
+    localsocketreader.cpp
 
 HEADERS  += qlogcat.h \
     addfilterdialog.h \
-    qlcfilter.h
+    qlcfilter.h \
+    localsocketreader.h
 
 FORMS    += qlogcat.ui \
     addfilterdialog.ui

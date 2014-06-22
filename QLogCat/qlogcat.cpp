@@ -7,8 +7,19 @@ QLogCat::QLogCat(QWidget *parent) :
     ui(new Ui::QLogCat)
 {
     ui->setupUi(this);
+    //Check own address
+
     socket = new QUdpSocket;
     socket->bind(13093);
+    server = new QLocalServer(this);
+    if (!server->listen("QLogCat")){
+        QMessageBox::critical(this, tr("LogCat Server"),
+                              tr("Unable to start the server: %1.")
+                              .arg(server->errorString()));
+        close();
+        return;
+    }
+    connect(server,SIGNAL(newConnection()),SLOT(onNewLocalConnection()));
     connect(socket,SIGNAL(readyRead()), SLOT(readDatagramms()));
 
     // Форматирование таблицы
@@ -232,3 +243,13 @@ void QLogCat::on_cbQt3_stateChanged(int arg1)
 {
     QLCLine::qt3 = (arg1==Qt::Checked);
 }
+
+void QLogCat::onNewLocalConnection()
+{
+    while(server->hasPendingConnections()){
+        QLocalSocket *ls = server->nextPendingConnection();
+        LocalSocketReader *lr = new LocalSocketReader(ls,this);
+        connect(lr,SIGNAL(newData(QByteArray)),SLOT(processMessage(QByteArray)));
+    }
+}
+

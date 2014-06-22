@@ -5,7 +5,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    qputenv("QLC","N");
+    qputenv("QLC","G");
 
     QLogCat w;
     w.show();    

@@ -1,33 +1,43 @@
 #include "qlc.h"
 
+//QProcess* QLC::logCat = new QProcess();
+QLocalSocket* QLC::logCatSock = 0;
+QLCEnv QLC::enviroment;
 
 void QLC::configure()
 {
     if (firstLaunch)    // Инициализация, разбор переменных окружения
+        // TODO Переписать с использованием инициализатора функции статик
     {
-    QString type = QString(getenv("QLC"));
-    if (type==""){
-    }
-    else if (type=="C"){
-        workFlow = QLC::Console;
-    }
-    else if (type.contains("N")){
-        workFlow = QLC::Net;
-        if (type.length()==10){
-            int address;
-            type.remove(0,1);
-            bool ok = false;
-            address = type.toInt(&ok);
-            if (ok)
-            #ifdef QT3
-                qlcAddress = address;
-            #endif
-            #ifdef QT4
+        QString type = QString(getenv("QLC"));
+        if (type==""){
+            workFlow=QLC::Off;
+        }
+        else if (type=="C"){
+            workFlow = QLC::Console;
+        }
+        else if (type.contains("N")){
+            workFlow = QLC::Net;
+            if (type.length()==10){
+                int address;
+                type.remove(0,1);
+                bool ok = false;
+                address = type.toInt(&ok);
+                if (ok)
                 qlcAddress.setAddress(address);
-            #endif
             }
         }
-    firstLaunch = false;
+        else if (type=="G"){
+            logCatSock = new QLocalSocket();
+            workFlow = QLC::LogCat;
+            logCatSock->connectToServer("QLOGCAT",QLocalSocket::WriteOnly);
+
+//            QString logCatAddress = QString(getenv("QLOGCAT"));
+//            if (logCatAddress==""){
+//                logCat->start("QLogCat");
+//            }
+        }
+        firstLaunch = false;
     }
 }
 
@@ -45,7 +55,7 @@ bool QLC::firstLaunch = true;        // Определяет необходим�
 
 // Адрес по умолчанию - локальная машина
 int QLC::port = QLC_DEFPORT;
-#ifdef QT4
+
 QHostAddress QLC::qlcAddress = QHostAddress::LocalHost;
 
 void QLC::setQLogCatAddress(QHostAddress address, int port)
@@ -53,17 +63,6 @@ void QLC::setQLogCatAddress(QHostAddress address, int port)
     QLC::port = port;
     QLC::qlcAddress = address;
 }
-#endif
-
-#ifdef QT3
-int QLC::qlcAddress = 0x7F000001;
-
-void QLC::setQLogCatAddress(int address, int port)
-{
-    QLC::port = port;
-    QLC::qlcAddress = address;
-}
-#endif
 
 ///////////////////////
 // Отправка сообщения
@@ -73,47 +72,41 @@ void QLC::sendMessage(QVector<QVariant> messageVector, QMap<QString, QStringList
 {
     configure();
     if (workFlow == QLC::Off){
-    // do nothing
+        // do nothing
     }
 
     else if (workFlow == QLC::Net){
-    QByteArray msg;
-    #ifdef QT4
-    QDataStream str(&msg, QIODevice::WriteOnly);
-    #endif
-    #ifdef QT3
-    QDataStream str(msg, IO_WriteOnly);
-    str.setVersion(6);
-    #endif
-    str << QLC_COMPLEX << level << log << time << file << line;
-    str << messageVector << cats;
-    QLC::writeDatagramm(msg);
+        QByteArray msg;
+        QDataStream str(&msg, QIODevice::WriteOnly);
+        str << QLC_COMPLEX << level << log << time << file << line;
+        str << messageVector << cats;
+        QLC::writeDatagramm(msg);
     }
 
     else if (workFlow == QLC::Console){
         for (int i=0; i<messageVector.size(); i++){
-        #ifdef QT4
             std::cout << messageVector[i].toString().toLocal8Bit().constData();
-        #endif
-        #ifdef QT3
-            std::cout << messageVector[i].toString().ascii(); // Дибильная МСВС кодировка
-        #endif
         }
         std::cout << std::endl;
+    }
+    else if (workFlow == QLC::LogCat){
+        if (logCatSock->isOpen()){
+            QByteArray msg;
+            QDataStream str(&msg, QIODevice::WriteOnly);
+            str << QLC_COMPLEX << level << log << time << file << line;
+            str << messageVector << cats;
+            logCatSock->write(msg);
+        }
+        else
+            qDebug()<<"Server not found";
+
     }
 }
 
 void QLC::writeDatagramm(QByteArray &msg)
 {
-    #ifdef QT4
-        QUdpSocket socket;
-        socket.writeDatagram(msg.data(),msg.size(),QHostAddress(qlcAddress), port);
-    #endif
-    #ifdef QT3
-        QSocketDevice socket(QSocketDevice::Datagram);
-        socket.setBlocking(false);
-        socket.writeBlock(msg,msg.size(),qlcAddress, port);
-    #endif
+    QUdpSocket socket;
+    socket.writeDatagram(msg.data(),msg.size(),QHostAddress(qlcAddress), port);
 }
 
 
@@ -130,7 +123,20 @@ QLC& QLC::operator <<(const QVariant var)
 
 QLC &QLC::operator <<(const QLCattable *cat)
 {
-    _messages.append(cat->printDebug());
-    _cats.insert(cat->printDebug(), cat->dump());
+    _messages.append(cat->toString());
+    _cats.insert(cat->toString(), cat->dump());
     return *this;
+}
+
+QLCEnv::QLCEnv()
+    :ls(0)
+{
+    std::cout << "ENVIROMENT CREATED" << std::endl;
+}
+
+QLCEnv::~QLCEnv()
+{
+    if(ls!=0);
+        delete ls;
+    std::cout<<"ENVIROMENT DELETED" << std::endl;
 }
